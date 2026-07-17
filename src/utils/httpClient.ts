@@ -1,0 +1,84 @@
+import http from 'node:http';
+import https from 'node:https';
+import axios, { AxiosError } from 'axios';
+import { env } from '../config/env.js';
+import type { HttpResponse } from '../scanner/types.js';
+import { safeLookup } from '../scanner/ssrfGuard.js';
+
+const BODY_SIZE_LIMIT = 50 * 1024; // 50 KB
+
+const httpAgent = new http.Agent({ lookup: safeLookup as any });
+const httpsAgent = new https.Agent({ lookup: safeLookup as any });
+
+/**
+ * Makes a single GET request to `url` and returns a normalised HttpResponse.
+ *
+ * - Protected against SSRF and DNS Rebinding via custom DNS lookup.
+ * - Follows redirects and records the chain.
+ * - Truncates the body to 50 KB to avoid memory issues.
+ * - Normalises all header names to lowercase.
+ * - Never throws on HTTP errors (4xx/5xx) — those are valid responses to inspect.
+ * - Throws only on network errors or timeouts.
+ */
+export async function fetchUrl(url: string): Promise<HttpResponse> {
+  const redirectChain: string[] = [];
+
+  // Protocol validation before attempting any connection
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`Invalid protocol: ${parsed.protocol}. Only http and https are allowed.`);
+  }
+
+  const instance = axios.create({
+    httpAgent,
+    httpsAgent,
+    timeout: env.HTTP_TIMEOUT_MS,
+    maxRedirects: 10,
+    // We want raw headers so we can inspect them for security checks
+    validateStatus: () => true, // never throw on HTTP status codes
+    headers: {
+      'User-Agent': 'Centinela-SecurityScanner/0.1 (+https://github.com/centinela)',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
+    // Track redirects
+    beforeRedirect: (options: Record<string, unknown>, { headers }: { headers: Record<string, string> }) => {
+      const location = headers['location'] as string | undefined;
+      if (location) redirectChain.push(location);
+    },
+  });
+
+  try {
+    const response = await instance.get<string>(url, {
+      responseType: 'text',
+    });
+
+    // Normalise headers: lowercase keys, string values
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(response.headers)) {
+      if (value !== undefined && value !== null) {
+        headers[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : String(value);
+      }
+    }
+
+    const body =
+      typeof response.data === 'string'
+        ? response.data.slice(0, BODY_SIZE_LIMIT)
+        : '';
+
+    return {
+      status: response.status,
+      headers,
+      body,
+      url: response.config.url ?? url,
+      redirectChain,
+    };
+  } catch (err) {
+    if (err instanceof AxiosError) {
+      throw new Error(
+        `Network error scanning ${url}: ${err.message}` +
+          (err.code ? ` (${err.code})` : ''),
+      );
+    }
+    throw err;
+  }
+}

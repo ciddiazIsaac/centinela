@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Centinela - HTTP Security Scanner</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --accent: #6c63ff;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+    h1 {
+      color: var(--accent);
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: normal;
+      color: var(--muted);
+      margin-top: 0;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border-left: 4px solid var(--accent);
+    }
+    pre {
+      background: #0a0a12;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      color: #a5b4fc;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🛡️ Centinela</h1>
+      <h2>HTTP Security Scanner</h2>
+    </header>
+
+    <div class="card">
+      <h3>¿Qué es Centinela?</h3>
+      <p>Centinela es un escáner de seguridad diseñado para auditar aplicaciones web. Detecta vulnerabilidades comunes relacionadas con configuraciones HTTP, incluyendo:</p>
+      <ul>
+        <li>Falta de cabeceras de seguridad (CSP, HSTS, X-Frame-Options).</li>
+        <li>Políticas de CORS excesivamente permisivas.</li>
+        <li>Cookies expuestas sin flags `Secure` o `HttpOnly`.</li>
+        <li>Rutas sensibles expuestas (`/.git/config`, `/.env`, `/admin`).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>API Endpoints</h3>
+      <p>Escanea una URL enviando un request a la API:</p>
+      <pre><code>curl -X POST http://localhost:3001/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'</code></pre>
+      
+      <p>Descarga un reporte PDF del escaneo:</p>
+      <pre><code>curl -OJ http://localhost:3001/api/scan/:id/report.pdf</code></pre>
+    </div>
+
+    <div class="card">
+      <h3>CLI</h3>
+      <p>También puedes usar Centinela desde la terminal:</p>
+      <pre><code>npx centinela scan https://example.com --output reporte.pdf</code></pre>
+    </div>
+  </div>
+</body>
+</html>
