@@ -23,6 +23,8 @@ export interface HttpResponse {
   url: string;
   /** Chain of URLs visited during redirects */
   redirectChain: string[];
+  /** Flag indicating if the response body was truncated due to size limits */
+  truncated?: boolean;
 }
 
 // ─── Per-severity count ──────────────────────────────────────────────────────
@@ -62,4 +64,4 @@ export interface ScanReport {
  * NOTE: exposedPaths is the documented exception: it makes additional
  * HTTP requests internally, but its public signature is identical.
  */
-export type CheckFn = (url: string, response: HttpResponse) => Promise<Finding[]>;
+export type CheckFn = (url: string, response: HttpResponse, signal?: AbortSignal) => Promise<Finding[]>;

@@ -45,7 +45,7 @@ function getBaseUrl(url: string): string {
   }
 }
 
-export const checkExposedPaths: CheckFn = async (url, _response) => {
+export const checkExposedPaths: CheckFn = async (url, _response, signal) => {
   const findings: Finding[] = [];
   const baseUrl = getBaseUrl(url);
 
@@ -58,7 +58,7 @@ export const checkExposedPaths: CheckFn = async (url, _response) => {
     const batchResults = await Promise.all(
       batch.map(async ({ path, description }) => {
         try {
-          const res = await fetchUrl(`${baseUrl}${path}`);
+          const res = await fetchUrl(`${baseUrl}${path}`, signal);
           return { path, description, status: res.status };
         } catch {
           // Network error → can't access, not exposed

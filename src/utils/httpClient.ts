@@ -20,7 +20,7 @@ const httpsAgent = new https.Agent({ lookup: safeLookup as any });
  * - Never throws on HTTP errors (4xx/5xx) — those are valid responses to inspect.
  * - Throws only on network errors or timeouts.
  */
-export async function fetchUrl(url: string): Promise<HttpResponse> {
+export async function fetchUrl(url: string, signal?: AbortSignal): Promise<HttpResponse> {
   const redirectChain: string[] = [];
 
   // Protocol validation before attempting any connection
@@ -34,6 +34,8 @@ export async function fetchUrl(url: string): Promise<HttpResponse> {
     httpsAgent,
     timeout: env.HTTP_TIMEOUT_MS,
     maxRedirects: 10,
+    maxContentLength: BODY_SIZE_LIMIT,
+    maxBodyLength: BODY_SIZE_LIMIT,
     // We want raw headers so we can inspect them for security checks
     validateStatus: () => true, // never throw on HTTP status codes
     headers: {
@@ -50,6 +52,7 @@ export async function fetchUrl(url: string): Promise<HttpResponse> {
   try {
     const response = await instance.get<string>(url, {
       responseType: 'text',
+      signal,
     });
 
     // Normalise headers: lowercase keys, string values
@@ -73,7 +76,24 @@ export async function fetchUrl(url: string): Promise<HttpResponse> {
       redirectChain,
     };
   } catch (err) {
-    if (err instanceof AxiosError) {
+    if (axios.isAxiosError(err)) {
+      const msg = err.message.toLowerCase();
+      if ((msg.includes('maxcontentlength') || msg.includes('maxbodylength')) && err.response) {
+        const headers: Record<string, string> = {};
+        for (const [key, value] of Object.entries(err.response.headers)) {
+          if (value !== undefined && value !== null) {
+            headers[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : String(value);
+          }
+        }
+        return {
+          status: err.response.status,
+          headers,
+          body: '',
+          url: err.config?.url ?? url,
+          redirectChain,
+          truncated: true,
+        };
+      }
       throw new Error(
         `Network error scanning ${url}: ${err.message}` +
           (err.code ? ` (${err.code})` : ''),

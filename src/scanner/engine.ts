@@ -54,45 +54,62 @@ function calculateScore(findings: Finding[]): number {
 export async function scan(url: string): Promise<ScanReport> {
   const startTime = Date.now();
 
-  // ── Single HTTP request ──────────────────────────────────────────────────
-  const httpResponse = await fetchUrl(url);
+  const controller = new AbortController();
+  const globalTimeout = setTimeout(() => controller.abort(), 30000); // 30 seconds global timeout
 
-  // ── Run all checks in parallel ───────────────────────────────────────────
-  const checkResults = await Promise.allSettled(
-    CHECKS.map((check) => check(url, httpResponse)),
-  );
+  try {
+    // ── Single HTTP request ──────────────────────────────────────────────────
+    const httpResponse = await fetchUrl(url, controller.signal);
 
-  // Collect findings, logging any check errors but not crashing
-  const findings: Finding[] = [];
-  for (const result of checkResults) {
-    if (result.status === 'fulfilled') {
-      findings.push(...result.value);
-    } else {
-      console.error('[engine] check failed:', result.reason);
+    // ── Run all checks in parallel ───────────────────────────────────────────
+    const checkResults = await Promise.allSettled(
+      CHECKS.map((check) => check(url, httpResponse, controller.signal)),
+    );
+
+    // Collect findings, logging any check errors but not crashing
+    const findings: Finding[] = [];
+    for (const result of checkResults) {
+      if (result.status === 'fulfilled') {
+        findings.push(...result.value);
+      } else {
+        console.error('[engine] check failed:', result.reason);
+      }
     }
+
+    if (httpResponse.truncated) {
+      findings.push({
+        id: 'response-truncated',
+        title: 'Response exceeded maximum size',
+        severity: 'info',
+        description: 'The HTTP response exceeded the maximum permitted size of 50KB. The download was aborted to protect server resources. The scan was performed on the headers and a truncated body.',
+        recommendation: 'Verify the endpoint is behaving correctly and not leaking memory or returning unexpected huge payloads.',
+      });
+    }
+
+    // Sort findings by severity (critical first)
+    const severityOrder: Record<string, number> = {
+      critical: 0,
+      high: 1,
+      medium: 2,
+      low: 3,
+      info: 4,
+    };
+    findings.sort((a, b) => (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99));
+
+    const duration = Date.now() - startTime;
+    const summary = buildSummary(findings);
+    const score = calculateScore(findings);
+
+    return {
+      id: crypto.randomUUID(),
+      url,
+      scannedAt: new Date().toISOString(),
+      duration,
+      score,
+      findings,
+      summary,
+    };
+  } finally {
+    clearTimeout(globalTimeout);
   }
-
-  // Sort findings by severity (critical first)
-  const severityOrder: Record<string, number> = {
-    critical: 0,
-    high: 1,
-    medium: 2,
-    low: 3,
-    info: 4,
-  };
-  findings.sort((a, b) => (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99));
-
-  const duration = Date.now() - startTime;
-  const summary = buildSummary(findings);
-  const score = calculateScore(findings);
-
-  return {
-    id: crypto.randomUUID(),
-    url,
-    scannedAt: new Date().toISOString(),
-    duration,
-    score,
-    findings,
-    summary,
-  };
 }
