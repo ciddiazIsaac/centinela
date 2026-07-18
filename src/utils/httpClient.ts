@@ -78,15 +78,18 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<HttpR
   } catch (err) {
     if (axios.isAxiosError(err)) {
       const msg = err.message.toLowerCase();
-      if ((msg.includes('maxcontentlength') || msg.includes('maxbodylength')) && err.response) {
+      // Axios may throw ERR_BAD_RESPONSE or ERR_FR_MAX_BODY_LENGTH without an err.response
+      if (msg.includes('maxcontentlength') || msg.includes('maxbodylength')) {
+        const rawHeaders = err.request?.res?.headers || err.response?.headers || {};
+        const status = err.request?.res?.statusCode || err.response?.status || 200;
         const headers: Record<string, string> = {};
-        for (const [key, value] of Object.entries(err.response.headers)) {
+        for (const [key, value] of Object.entries(rawHeaders)) {
           if (value !== undefined && value !== null) {
             headers[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : String(value);
           }
         }
         return {
-          status: err.response.status,
+          status,
           headers,
           body: '',
           url: err.config?.url ?? url,
