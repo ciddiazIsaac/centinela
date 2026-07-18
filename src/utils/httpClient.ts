@@ -80,6 +80,13 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<HttpR
       const msg = err.message.toLowerCase();
       // Axios may throw ERR_BAD_RESPONSE or ERR_FR_MAX_BODY_LENGTH without an err.response
       if (msg.includes('maxcontentlength') || msg.includes('maxbodylength')) {
+        // NOTE: We access err.request.res (Node.js native IncomingMessage) instead of err.response
+        // because when axios aborts mid-stream due to maxContentLength, it constructs the AxiosError
+        // before the response object is fully hydrated — err.response ends up empty/undefined.
+        // err.request.res is the raw Node.js response exposed through axios's internal HTTP adapter
+        // and IS populated at this point. This is NOT part of axios's public API and could change
+        // in a future major version without a semver notice. If upgrading axios, run
+        // maxContentLength.test.ts first — that test acts as the canary for this code path.
         const rawHeaders = err.request?.res?.headers || err.response?.headers || {};
         const status = err.request?.res?.statusCode || err.response?.status || 200;
         const headers: Record<string, string> = {};

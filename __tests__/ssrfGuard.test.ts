@@ -57,10 +57,10 @@ describe('SSRF Guard - isPrivateOrLocalIP', () => {
 
 describe('SSRF Guard - safeLookup custom DNS', () => {
   it('allows lookup for a domain resolving to public IP', () => {
-    const mockLookup = vi.spyOn(dns, 'lookup').mockImplementation((hostname, options, cb) => {
-      // @ts-ignore
-      cb(null, [{ address: '8.8.8.8', family: 4 }]);
-    });
+    const mockLookup = vi.spyOn(dns, 'lookup').mockImplementation(((hostname: string, options: any, cb?: any) => {
+      const callback = typeof options === 'function' ? options : cb;
+      callback(null, [{ address: '8.8.8.8', family: 4 }]);
+    }) as any);
 
     safeLookup('google.com', { all: true }, (err: any, addresses: any) => {
       expect(err).toBeNull();
@@ -71,10 +71,10 @@ describe('SSRF Guard - safeLookup custom DNS', () => {
   });
 
   it('aborts lookup for a domain resolving to private IP', () => {
-    const mockLookup = vi.spyOn(dns, 'lookup').mockImplementation((hostname, options, cb) => {
-      // @ts-ignore
-      cb(null, [{ address: '192.168.1.1', family: 4 }]);
-    });
+    const mockLookup = vi.spyOn(dns, 'lookup').mockImplementation(((hostname: string, options: any, cb?: any) => {
+      const callback = typeof options === 'function' ? options : cb;
+      callback(null, [{ address: '192.168.1.1', family: 4 }]);
+    }) as any);
 
     safeLookup('internal.company.local', { all: true }, (err: any) => {
       expect(err).toBeDefined();
@@ -86,13 +86,13 @@ describe('SSRF Guard - safeLookup custom DNS', () => {
   });
 
   it('aborts lookup if ANY resolved IP is private', () => {
-    const mockLookup = vi.spyOn(dns, 'lookup').mockImplementation((hostname, options, cb) => {
-      // @ts-ignore
-      cb(null, [
+    const mockLookup = vi.spyOn(dns, 'lookup').mockImplementation(((hostname: string, options: any, cb?: any) => {
+      const callback = typeof options === 'function' ? options : cb;
+      callback(null, [
         { address: '8.8.8.8', family: 4 },
         { address: '127.0.0.1', family: 4 }
       ]);
-    });
+    }) as any);
 
     safeLookup('malicious-rebinding.com', { all: true }, (err: any) => {
       expect(err).toBeDefined();

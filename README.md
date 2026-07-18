@@ -83,3 +83,7 @@ Para ver la cobertura:
 ```bash
 npm run test:coverage
 ```
+
+## Notas de Mantenimiento
+
+Consulta [`KNOWN_ISSUES.md`](./KNOWN_ISSUES.md) para detalles sobre dependencias internas conocidas y advertencias para futuras actualizaciones de dependencias.
