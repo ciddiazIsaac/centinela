@@ -80,12 +80,12 @@
     <div class="card">
       <h3>API Endpoints</h3>
       <p>Escanea una URL enviando un request a la API:</p>
-      <pre><code>curl -X POST http://localhost:3001/api/scan \
+      <pre><code>curl -X POST https://centinela-br0a.onrender.com/api/scan \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com"}'</code></pre>
       
       <p>Descarga un reporte PDF del escaneo:</p>
-      <pre><code>curl -OJ http://localhost:3001/api/scan/:id/report.pdf</code></pre>
+      <pre><code>curl -OJ https://centinela-br0a.onrender.com/api/scan/:id/report.pdf</code></pre>
     </div>
 
     <div class="card">
