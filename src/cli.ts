@@ -33,25 +33,26 @@ program
 
     console.error(pc.cyan(`\n🛡️  Centinela — scanning ${pc.bold(url)} ...\n`));
 
-    let report: ScanReport;
+    let report: ScanReport | undefined;
     try {
       report = await scan(url);
     } catch (err) {
       console.error(pc.red(`\n❌  Scan failed: ${(err as Error).message}`));
       process.exit(1);
     }
+    const safeReport = report!;
 
     // ── JSON mode ──────────────────────────────────────────────────────────
     if (opts.json) {
-      console.log(JSON.stringify(report, null, 2));
-      if (opts.output) await savePdf(report, opts.output);
+      console.log(JSON.stringify(safeReport, null, 2));
+      if (opts.output) await savePdf(safeReport, opts.output);
       return;
     }
 
     // ── Formatted output ───────────────────────────────────────────────────
-    printReport(report, opts.quiet ?? false);
+    printReport(safeReport, opts.quiet ?? false);
 
-    if (opts.output) await savePdf(report, opts.output);
+    if (opts.output) await savePdf(safeReport, opts.output);
   });
 
 program.parse();
